@@ -3,6 +3,7 @@
 [![Tests](https://github.com/philiprehberger/rb-csv-builder/actions/workflows/ci.yml/badge.svg)](https://github.com/philiprehberger/rb-csv-builder/actions/workflows/ci.yml)
 [![Gem Version](https://badge.fury.io/rb/philiprehberger-csv_builder.svg)](https://rubygems.org/gems/philiprehberger-csv_builder)
 [![License](https://img.shields.io/github/license/philiprehberger/rb-csv-builder)](LICENSE)
+[![Sponsor](https://img.shields.io/badge/sponsor-GitHub%20Sponsors-ec6cb9)](https://github.com/sponsors/philiprehberger)
 
 Declarative CSV builder with column mapping and streaming output
 
