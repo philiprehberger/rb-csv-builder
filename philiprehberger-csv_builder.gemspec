@@ -11,15 +11,15 @@ Gem::Specification.new do |spec|
   spec.summary       = 'Declarative CSV builder with column mapping and streaming output'
   spec.description   = 'Build CSV files from record collections using a declarative DSL with column definitions, ' \
                        'custom transforms, and file output support.'
-  spec.homepage      = 'https://github.com/philiprehberger/rb-csv-builder'
+  spec.homepage      = 'https://philiprehberger.com/open-source-packages/ruby/philiprehberger-csv_builder'
   spec.license       = 'MIT'
 
   spec.required_ruby_version = '>= 3.1.0'
 
   spec.metadata['homepage_uri']          = spec.homepage
-  spec.metadata['source_code_uri']       = spec.homepage
-  spec.metadata['changelog_uri']         = "#{spec.homepage}/blob/main/CHANGELOG.md"
-  spec.metadata['bug_tracker_uri']       = "#{spec.homepage}/issues"
+  spec.metadata['source_code_uri']       = 'https://github.com/philiprehberger/rb-csv-builder'
+  spec.metadata['changelog_uri']         = 'https://github.com/philiprehberger/rb-csv-builder/blob/main/CHANGELOG.md'
+  spec.metadata['bug_tracker_uri']       = 'https://github.com/philiprehberger/rb-csv-builder/issues'
   spec.metadata['rubygems_mfa_required'] = 'true'
 
   spec.files = Dir['lib/**/*.rb', 'LICENSE', 'README.md', 'CHANGELOG.md']
