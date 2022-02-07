@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
 
   spec.summary = 'Declarative CSV builder with column mapping and streaming output'
   spec.description = 'Build CSV files from record collections using a declarative DSL with column definitions, ' \
-                       'custom transforms, and file output support.'
+                     'custom transforms, and file output support.'
   spec.homepage = 'https://philiprehberger.com/open-source-packages/ruby/philiprehberger-csv_builder'
   spec.license = 'MIT'
 
