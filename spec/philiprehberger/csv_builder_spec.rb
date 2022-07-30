@@ -2,6 +2,7 @@
 
 require 'spec_helper'
 require 'tempfile'
+require 'stringio'
 
 RSpec.describe Philiprehberger::CsvBuilder do
   let(:records) do
@@ -298,11 +299,286 @@ RSpec.describe Philiprehberger::CsvBuilder do
     end
   end
 
+  describe 'custom delimiters' do
+    it 'generates tab-separated CSV' do
+      builder = described_class.build(records, delimiter: "\t") do
+        column :name
+        column :email
+      end
+
+      csv = builder.to_csv
+      lines = csv.strip.split("\n")
+      expect(lines[0]).to eq("name\temail")
+      expect(lines[1]).to eq("Alice\talice@example.com")
+    end
+
+    it 'generates pipe-separated CSV' do
+      builder = described_class.build(records, delimiter: '|') do
+        column :name
+        column :email
+      end
+
+      csv = builder.to_csv
+      lines = csv.strip.split("\n")
+      expect(lines[0]).to eq('name|email')
+      expect(lines[1]).to eq('Alice|alice@example.com')
+    end
+
+    it 'generates semicolon-separated CSV' do
+      builder = described_class.build(records, delimiter: ';') do
+        column :name
+        column :email
+      end
+
+      csv = builder.to_csv
+      lines = csv.strip.split("\n")
+      expect(lines[0]).to eq('name;email')
+    end
+  end
+
+  describe 'custom quote character' do
+    it 'uses single quotes for quoting' do
+      quote_records = [{ name: 'Smith, Alice', email: 'alice@example.com' }]
+      builder = described_class.build(quote_records, quote_char: "'") do
+        column :name
+        column :email
+      end
+
+      csv = builder.to_csv
+      expect(csv).to include("'Smith, Alice'")
+    end
+  end
+
+  describe 'column header aliasing' do
+    it 'uses custom header labels' do
+      builder = described_class.build(records) do
+        column :name, header: 'Full Name'
+        column :email, header: 'Email Address'
+      end
+
+      expect(builder.headers).to eq(['Full Name', 'Email Address'])
+    end
+
+    it 'includes custom headers in CSV output' do
+      builder = described_class.build(records) do
+        column :name, header: 'Full Name'
+        column :email
+      end
+
+      csv = builder.to_csv
+      lines = csv.strip.split("\n")
+      expect(lines[0]).to eq('Full Name,email')
+      expect(lines[1]).to eq('Alice,alice@example.com')
+    end
+
+    it 'mixes aliased and non-aliased columns' do
+      builder = described_class.build(records) do
+        column :name, header: 'Person'
+        column :email
+        column :active, header: 'Status'
+      end
+
+      expect(builder.headers).to eq(%w[Person email Status])
+    end
+  end
+
+  describe 'filter' do
+    it 'filters records with a predicate' do
+      builder = described_class.build(records) do
+        column :name
+        column :email
+        filter { |r| r[:active] }
+      end
+
+      csv = builder.to_csv
+      lines = csv.strip.split("\n")
+      expect(lines.size).to eq(2)
+      expect(lines[1]).to eq('Alice,alice@example.com')
+    end
+
+    it 'filters with string matching' do
+      builder = described_class.build(records) do
+        column :name
+        filter { |r| r[:name].start_with?('B') }
+      end
+
+      csv = builder.to_csv
+      lines = csv.strip.split("\n")
+      expect(lines.size).to eq(2)
+      expect(lines[1]).to eq('Bob')
+    end
+
+    it 'supports multiple filters (AND logic)' do
+      extended = records + [{ name: 'Charlie', email: 'charlie@example.com', active: true }]
+      builder = described_class.build(extended) do
+        column :name
+        filter { |r| r[:active] }
+        filter { |r| r[:name].length > 4 }
+      end
+
+      csv = builder.to_csv
+      lines = csv.strip.split("\n")
+      expect(lines.size).to eq(3)
+      expect(lines[1]).to eq('Alice')
+      expect(lines[2]).to eq('Charlie')
+    end
+
+    it 'returns only headers when all records are filtered out' do
+      builder = described_class.build(records) do
+        column :name
+        filter { |_r| false }
+      end
+
+      csv = builder.to_csv
+      lines = csv.strip.split("\n")
+      expect(lines.size).to eq(1)
+      expect(lines[0]).to eq('name')
+    end
+
+    it 'handles empty records after filter' do
+      builder = described_class.build([]) do
+        column :name
+        filter { |r| r[:active] }
+      end
+
+      csv = builder.to_csv
+      lines = csv.strip.split("\n")
+      expect(lines.size).to eq(1)
+      expect(lines[0]).to eq('name')
+    end
+  end
+
+  describe 'row_number' do
+    it 'adds auto-incrementing row number as first column' do
+      builder = described_class.build(records) do
+        column :name
+        row_number
+      end
+
+      csv = builder.to_csv
+      lines = csv.strip.split("\n")
+      expect(lines[0]).to eq('#,name')
+      expect(lines[1]).to eq('1,Alice')
+      expect(lines[2]).to eq('2,Bob')
+    end
+
+    it 'uses custom row number header' do
+      builder = described_class.build(records) do
+        column :name
+        row_number(header: 'Row')
+      end
+
+      csv = builder.to_csv
+      lines = csv.strip.split("\n")
+      expect(lines[0]).to eq('Row,name')
+      expect(lines[1]).to eq('1,Alice')
+    end
+
+    it 'numbers only filtered records' do
+      builder = described_class.build(records) do
+        column :name
+        row_number
+        filter { |r| r[:active] }
+      end
+
+      csv = builder.to_csv
+      lines = csv.strip.split("\n")
+      expect(lines.size).to eq(2)
+      expect(lines[1]).to eq('1,Alice')
+    end
+  end
+
+  describe 'to_io streaming' do
+    it 'streams CSV to a StringIO' do
+      io = StringIO.new
+      builder = described_class.build(records) do
+        column :name
+        column :email
+      end
+
+      builder.to_io(io)
+      io.rewind
+      content = io.read
+      lines = content.strip.split("\n")
+      expect(lines[0]).to eq('name,email')
+      expect(lines[1]).to eq('Alice,alice@example.com')
+      expect(lines[2]).to eq('Bob,bob@example.com')
+    end
+
+    it 'streams with custom delimiter' do
+      io = StringIO.new
+      builder = described_class.build(records, delimiter: "\t") do
+        column :name
+        column :email
+      end
+
+      builder.to_io(io)
+      io.rewind
+      lines = io.read.strip.split("\n")
+      expect(lines[0]).to eq("name\temail")
+    end
+  end
+
+  describe 'combined features' do
+    it 'combines filter, custom delimiter, and aliases' do
+      builder = described_class.build(records, delimiter: '|') do
+        column :name, header: 'Person'
+        column :email, header: 'Contact'
+        filter { |r| r[:active] }
+      end
+
+      csv = builder.to_csv
+      lines = csv.strip.split("\n")
+      expect(lines[0]).to eq('Person|Contact')
+      expect(lines[1]).to eq('Alice|alice@example.com')
+      expect(lines.size).to eq(2)
+    end
+
+    it 'combines row number, filter, and aliases' do
+      builder = described_class.build(records) do
+        column :name, header: 'Name'
+        row_number(header: 'No.')
+        filter { |r| r[:active] }
+      end
+
+      csv = builder.to_csv
+      lines = csv.strip.split("\n")
+      expect(lines[0]).to eq('No.,Name')
+      expect(lines[1]).to eq('1,Alice')
+    end
+
+    it 'streams combined features to IO' do
+      io = StringIO.new
+      builder = described_class.build(records, delimiter: ';') do
+        column :name, header: 'Full Name'
+        row_number
+        filter { |r| r[:name] == 'Bob' }
+      end
+
+      builder.to_io(io)
+      io.rewind
+      lines = io.read.strip.split("\n")
+      expect(lines[0]).to eq('#;Full Name')
+      expect(lines[1]).to eq('1;Bob')
+      expect(lines.size).to eq(2)
+    end
+  end
+
   describe Philiprehberger::CsvBuilder::Column do
     describe '#header' do
       it 'returns the column name as a string' do
         col = described_class.new(:age)
         expect(col.header).to eq('age')
+      end
+
+      it 'returns custom header when provided' do
+        col = described_class.new(:age, header: 'User Age')
+        expect(col.header).to eq('User Age')
+      end
+
+      it 'falls back to name when no custom header' do
+        col = described_class.new(:email, header: nil)
+        expect(col.header).to eq('email')
       end
     end
 

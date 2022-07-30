@@ -11,9 +11,11 @@ module Philiprehberger
       attr_reader :transform
 
       # @param name [Symbol, String] the column name (also used as the record key)
+      # @param header [String, nil] optional custom header label
       # @param transform [Proc, nil] optional block to transform the value
-      def initialize(name, &transform)
+      def initialize(name, header: nil, &transform)
         @name = name.to_sym
+        @custom_header = header
         @transform = block_given? ? transform : nil
       end
 
@@ -37,7 +39,7 @@ module Philiprehberger
       #
       # @return [String]
       def header
-        @name.to_s
+        @custom_header || @name.to_s
       end
     end
   end
