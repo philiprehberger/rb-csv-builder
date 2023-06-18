@@ -154,6 +154,25 @@ Customize the header label:
 row_number(header: 'Row')
 ```
 
+### Sorting
+
+```ruby
+builder = Philiprehberger::CsvBuilder.build(records) do
+  column :name
+  column :email
+  sort_by { |r| r[:name] }
+end
+```
+
+Sort descending:
+
+```ruby
+builder = Philiprehberger::CsvBuilder.build(records) do
+  column :name
+  sort_by(direction: :desc) { |r| r[:name] }
+end
+```
+
 ### Streaming
 
 ```ruby
@@ -192,6 +211,7 @@ builder.headers  # => ["name", "email"]
 | `CsvBuilder.build(records, delimiter:, quote_char:, &block)` | Build a CSV using the column DSL |
 | `Builder#column(name, header:, &block)` | Define a column with optional alias and transform |
 | `Builder#filter(&block)` | Filter records (block returns true to include) |
+| `Builder#sort_by(direction:, &block)` | Sort records by block key (`:asc` or `:desc`) |
 | `Builder#row_number(header:)` | Add auto-incrementing row number column |
 | `Builder#to_csv` | Generate CSV as a string |
 | `Builder#to_file(path)` | Write CSV to a file |
