@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-04-10
+
+### Added
+- `Builder#footer(&block)` appends a computed summary row after all data rows
+- `Builder#limit(n)` caps output to N rows
+- `Builder#offset(n)` skips the first N filtered/sorted records
+
 ## [0.3.0] - 2026-04-09
 
 ### Added
@@ -57,3 +64,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - File output via `to_file`
 - Support for hash records with symbol and string keys
 - Proper CSV escaping for values with commas and quotes
+
+[0.4.0]: https://github.com/philiprehberger/rb-csv-builder/releases/tag/v0.4.0
+[0.3.0]: https://github.com/philiprehberger/rb-csv-builder/releases/tag/v0.3.0
+[0.2.0]: https://github.com/philiprehberger/rb-csv-builder/releases/tag/v0.2.0
+[0.1.5]: https://github.com/philiprehberger/rb-csv-builder/releases/tag/v0.1.5
+[0.1.4]: https://github.com/philiprehberger/rb-csv-builder/releases/tag/v0.1.4
+[0.1.3]: https://github.com/philiprehberger/rb-csv-builder/releases/tag/v0.1.3
+[0.1.2]: https://github.com/philiprehberger/rb-csv-builder/releases/tag/v0.1.2
+[0.1.1]: https://github.com/philiprehberger/rb-csv-builder/releases/tag/v0.1.1
+[0.1.0]: https://github.com/philiprehberger/rb-csv-builder/releases/tag/v0.1.0

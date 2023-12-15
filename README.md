@@ -173,6 +173,30 @@ builder = Philiprehberger::CsvBuilder.build(records) do
 end
 ```
 
+### Footer Row
+
+Append a computed summary row after all data rows:
+
+```ruby
+builder = Philiprehberger::CsvBuilder.build(records) do
+  column :name
+  column(:amount) { |r| r[:amount] }
+  footer { |recs| ['Total', recs.sum { |r| r[:amount] }] }
+end
+```
+
+### Pagination
+
+```ruby
+builder = Philiprehberger::CsvBuilder.build(records) do
+  column :name
+  offset 10   # skip first 10 records
+  limit 25    # output at most 25 rows
+end
+```
+
+`offset` and `limit` are applied after filtering and sorting.
+
 ### Streaming
 
 ```ruby
@@ -212,6 +236,9 @@ builder.headers  # => ["name", "email"]
 | `Builder#column(name, header:, &block)` | Define a column with optional alias and transform |
 | `Builder#filter(&block)` | Filter records (block returns true to include) |
 | `Builder#sort_by(direction:, &block)` | Sort records by block key (`:asc` or `:desc`) |
+| `Builder#footer(&block)` | Append a computed footer row (block receives filtered records) |
+| `Builder#limit(n)` | Cap output to N rows |
+| `Builder#offset(n)` | Skip first N filtered/sorted records |
 | `Builder#row_number(header:)` | Add auto-incrementing row number column |
 | `Builder#to_csv` | Generate CSV as a string |
 | `Builder#to_file(path)` | Write CSV to a file |
