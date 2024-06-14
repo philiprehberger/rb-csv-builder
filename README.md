@@ -197,6 +197,27 @@ end
 
 `offset` and `limit` are applied after filtering and sorting.
 
+### Excel-Compatible Output (BOM)
+
+Prepend a UTF-8 BOM so Excel opens the CSV with correct encoding:
+
+```ruby
+builder = Philiprehberger::CsvBuilder.build(records, bom: true) do
+  column :name
+  column :email
+end
+
+builder.to_file('export.csv')
+```
+
+### Custom Encoding
+
+```ruby
+builder = Philiprehberger::CsvBuilder.build(records, encoding: 'ISO-8859-1') do
+  column :name
+end
+```
+
 ### Streaming
 
 ```ruby
@@ -232,7 +253,7 @@ builder.headers  # => ["name", "email"]
 
 | Method | Description |
 |--------|-------------|
-| `CsvBuilder.build(records, delimiter:, quote_char:, &block)` | Build a CSV using the column DSL |
+| `CsvBuilder.build(records, delimiter:, quote_char:, bom:, encoding:, &block)` | Build a CSV using the column DSL |
 | `Builder#column(name, header:, &block)` | Define a column with optional alias and transform |
 | `Builder#filter(&block)` | Filter records (block returns true to include) |
 | `Builder#sort_by(direction:, &block)` | Sort records by block key (`:asc` or `:desc`) |

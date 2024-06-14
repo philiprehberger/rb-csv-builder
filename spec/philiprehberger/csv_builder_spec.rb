@@ -747,6 +747,74 @@ RSpec.describe Philiprehberger::CsvBuilder do
     end
   end
 
+  describe 'BOM support' do
+    it 'prepends UTF-8 BOM when bom: true' do
+      builder = described_class.build(records, bom: true) do
+        column :name
+      end
+      csv = builder.to_csv
+      expect(csv.bytes[0..2]).to eq([0xEF, 0xBB, 0xBF])
+    end
+
+    it 'does not prepend BOM by default' do
+      builder = described_class.build(records) do
+        column :name
+      end
+      csv = builder.to_csv
+      expect(csv.bytes[0..2]).not_to eq([0xEF, 0xBB, 0xBF])
+    end
+
+    it 'includes BOM in to_file output' do
+      tmpfile = Tempfile.new(['bom', '.csv'])
+      builder = described_class.build(records, bom: true) do
+        column :name
+      end
+      builder.to_file(tmpfile.path)
+      bytes = File.binread(tmpfile.path).bytes[0..2]
+      expect(bytes).to eq([0xEF, 0xBB, 0xBF])
+    ensure
+      tmpfile&.unlink
+    end
+
+    it 'includes BOM in to_io output' do
+      io = StringIO.new
+      io.set_encoding('ASCII-8BIT')
+      builder = described_class.build(records, bom: true) do
+        column :name
+      end
+      builder.to_io(io)
+      io.rewind
+      expect(io.string.bytes[0..2]).to eq([0xEF, 0xBB, 0xBF])
+    end
+
+    it 'combines BOM with custom delimiter' do
+      builder = described_class.build(records, bom: true, delimiter: "\t") do
+        column :name
+      end
+      csv = builder.to_csv
+      expect(csv.bytes[0..2]).to eq([0xEF, 0xBB, 0xBF])
+      expect(csv).to include('name')
+    end
+  end
+
+  describe 'encoding support' do
+    it 'returns ASCII-compatible encoding by default' do
+      builder = described_class.build(records) do
+        column :name
+      end
+      csv = builder.to_csv
+      expect(csv.encoding).to be_ascii_compatible
+    end
+
+    it 'encodes output with custom encoding' do
+      builder = described_class.build(records, encoding: 'ISO-8859-1') do
+        column :name
+      end
+      csv = builder.to_csv
+      expect(csv.encoding).to eq(Encoding::ISO_8859_1)
+    end
+  end
+
   describe '#limit' do
     it 'caps the number of output rows' do
       recs = (1..10).map { |i| { n: i } }
