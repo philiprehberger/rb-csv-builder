@@ -797,6 +797,200 @@ RSpec.describe Philiprehberger::CsvBuilder do
     end
   end
 
+  describe '.tsv' do
+    it 'generates tab-separated output' do
+      builder = described_class.tsv(records) do
+        column :name
+        column :email
+      end
+      lines = builder.to_csv.strip.split("\n")
+      expect(lines[0]).to eq("name\temail")
+      expect(lines[1]).to eq("Alice\talice@example.com")
+    end
+
+    it 'returns a Builder instance' do
+      builder = described_class.tsv(records) { column :name }
+      expect(builder).to be_a(described_class::Builder)
+    end
+
+    it 'passes additional options through' do
+      builder = described_class.tsv(records, bom: true) { column :name }
+      csv = builder.to_csv
+      expect(csv.bytes[0..2]).to eq([0xEF, 0xBB, 0xBF])
+    end
+
+    it 'raises Error when no block is given' do
+      expect { described_class.tsv(records) }.to raise_error(described_class::Error)
+    end
+  end
+
+  describe '.psv' do
+    it 'generates pipe-separated output' do
+      builder = described_class.psv(records) do
+        column :name
+        column :email
+      end
+      lines = builder.to_csv.strip.split("\n")
+      expect(lines[0]).to eq('name|email')
+      expect(lines[1]).to eq('Alice|alice@example.com')
+    end
+
+    it 'returns a Builder instance' do
+      builder = described_class.psv(records) { column :name }
+      expect(builder).to be_a(described_class::Builder)
+    end
+
+    it 'passes additional options through' do
+      builder = described_class.psv(records, encoding: 'ISO-8859-1') { column :name }
+      csv = builder.to_csv
+      expect(csv.encoding).to eq(Encoding::ISO_8859_1)
+    end
+
+    it 'raises Error when no block is given' do
+      expect { described_class.psv(records) }.to raise_error(described_class::Error)
+    end
+  end
+
+  describe '#validate' do
+    it 'passes when all rows satisfy the validation' do
+      builder = described_class.build(records) do
+        column :name
+        validate { |row| !row[:name].empty? }
+      end
+      expect { builder.to_csv }.not_to raise_error
+    end
+
+    it 'raises ValidationError when a row returns falsy' do
+      builder = described_class.build(records) do
+        column :name
+        validate { |row| row[:name] == 'Alice' }
+      end
+      expect { builder.to_csv }.to raise_error(described_class::ValidationError, /Row 2/)
+    end
+
+    it 'raises ValidationError when block raises an exception' do
+      builder = described_class.build(records) do
+        column :name
+        validate { |_row| raise 'bad data' }
+      end
+      expect { builder.to_csv }.to raise_error(described_class::ValidationError, /bad data/)
+    end
+
+    it 'validates on to_io as well' do
+      builder = described_class.build(records) do
+        column :name
+        validate { |row| row[:name] == 'Alice' }
+      end
+      expect { builder.to_io(StringIO.new) }.to raise_error(described_class::ValidationError)
+    end
+
+    it 'supports multiple validations (all must pass)' do
+      builder = described_class.build(records) do
+        column :name
+        column :email
+        validate { |row| !row[:name].empty? }
+        validate { |row| row[:email].include?('@') }
+      end
+      expect { builder.to_csv }.not_to raise_error
+    end
+
+    it 'does not validate when no validation is registered' do
+      builder = described_class.build(records) do
+        column :name
+      end
+      expect { builder.to_csv }.not_to raise_error
+    end
+  end
+
+  describe '#transform_header' do
+    it 'upcases all headers' do
+      builder = described_class.build(records) do
+        column :name
+        column :email
+        transform_header(&:upcase)
+      end
+      expect(builder.headers).to eq(%w[NAME EMAIL])
+    end
+
+    it 'applies to CSV output' do
+      builder = described_class.build(records) do
+        column :name
+        transform_header(&:capitalize)
+      end
+      lines = builder.to_csv.strip.split("\n")
+      expect(lines[0]).to eq('Name')
+    end
+
+    it 'applies to custom header aliases' do
+      builder = described_class.build(records) do
+        column :name, header: 'full name'
+        transform_header(&:upcase)
+      end
+      expect(builder.headers).to eq(['FULL NAME'])
+    end
+
+    it 'does not affect row number header' do
+      builder = described_class.build(records) do
+        column :name
+        row_number(header: '#')
+        transform_header(&:upcase)
+      end
+      expect(builder.headers).to eq(['#', 'NAME'])
+    end
+  end
+
+  describe '#total' do
+    let(:amount_records) do
+      [
+        { name: 'Alice', amount: 10 },
+        { name: 'Bob', amount: 20 },
+        { name: 'Charlie', amount: 30 }
+      ]
+    end
+
+    it 'adds a footer row with the sum of the named column' do
+      builder = described_class.build(amount_records) do
+        column :name
+        column :amount
+        total :amount
+      end
+      lines = builder.to_csv.strip.split("\n")
+      expect(lines.last).to include('60.0')
+    end
+
+    it 'uses a custom block to compute the total' do
+      builder = described_class.build(amount_records) do
+        column :name
+        column :amount
+        total(:amount, &:max)
+      end
+      lines = builder.to_csv.strip.split("\n")
+      expect(lines.last).to include('30.0')
+    end
+
+    it 'leaves non-total columns blank' do
+      builder = described_class.build(amount_records) do
+        column :name
+        column :amount
+        total :amount
+      end
+      lines = builder.to_csv.strip.split("\n")
+      # The footer row should contain the total for the amount column
+      expect(lines.last).to include('60.0')
+    end
+
+    it 'works with filtered records' do
+      builder = described_class.build(amount_records) do
+        column :name
+        column :amount
+        filter { |r| r[:amount] >= 20 }
+        total :amount
+      end
+      lines = builder.to_csv.strip.split("\n")
+      expect(lines.last).to include('50.0')
+    end
+  end
+
   describe 'encoding support' do
     it 'returns ASCII-compatible encoding by default' do
       builder = described_class.build(records) do

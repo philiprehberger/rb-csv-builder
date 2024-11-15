@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-04-14
+
+### Added
+- `CsvBuilder.tsv` shorthand for tab-separated output
+- `CsvBuilder.psv` shorthand for pipe-separated output
+- `Builder#validate` registers a validation block; raises `CsvBuilder::ValidationError` on failure
+- `Builder#transform_header` registers a proc applied to all column headers during rendering
+- `Builder#total(column, &block)` shorthand for adding a footer row with computed total
+
 ## [0.5.0] - 2026-04-11
 
 ### Added
@@ -75,6 +84,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for hash records with symbol and string keys
 - Proper CSV escaping for values with commas and quotes
 
+[0.6.0]: https://github.com/philiprehberger/rb-csv-builder/releases/tag/v0.6.0
 [0.5.0]: https://github.com/philiprehberger/rb-csv-builder/releases/tag/v0.5.0
 [0.4.0]: https://github.com/philiprehberger/rb-csv-builder/releases/tag/v0.4.0
 [0.3.0]: https://github.com/philiprehberger/rb-csv-builder/releases/tag/v0.3.0
