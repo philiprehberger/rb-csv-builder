@@ -11,8 +11,9 @@ Gem::Specification.new do |spec|
   spec.summary = 'Declarative CSV builder with column mapping and streaming output'
   spec.description = 'Build CSV files from record collections using a declarative DSL with column definitions, ' \
                      'custom transforms, filtering, sorting, pagination via limit/offset, computed ' \
-                     'footer rows, row numbers, streaming output, custom delimiters, TSV/PSV shorthands, ' \
-                     'row validation, header transforms, and total rows.'
+                     'footer rows, row numbers, streaming output, custom delimiters and line separators, ' \
+                     'TSV/PSV shorthands, row validation, header transforms, total rows, append-to-file ' \
+                     'support, and custom empty-value placeholders.'
   spec.homepage = 'https://philiprehberger.com/open-source-packages/ruby/philiprehberger-csv_builder'
   spec.license = 'MIT'
 
