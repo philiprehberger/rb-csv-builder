@@ -1255,4 +1255,31 @@ RSpec.describe Philiprehberger::CsvBuilder do
       expect(lines[1]).to eq('Alice,a@b.com')
     end
   end
+
+  describe '#row_count' do
+    it 'counts all records when no filter is applied' do
+      builder = described_class.build([{ a: 1 }, { a: 2 }, { a: 3 }]) do
+        column :a
+      end
+      expect(builder.row_count).to eq(3)
+    end
+
+    it 'respects filters, limits, and offsets' do
+      builder = described_class.build((1..10).map { |i| { n: i } }) do
+        column :n
+        filter { |r| r[:n].even? }
+        offset 1
+        limit 2
+      end
+      expect(builder.row_count).to eq(2)
+    end
+
+    it 'excludes headers and footer from the count' do
+      builder = described_class.build([{ amount: 10 }, { amount: 20 }]) do
+        column :amount
+        total :amount
+      end
+      expect(builder.row_count).to eq(2)
+    end
+  end
 end
