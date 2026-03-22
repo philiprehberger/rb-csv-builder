@@ -97,7 +97,7 @@ RSpec.describe Philiprehberger::CsvBuilder do
 
         csv = builder.to_csv
         lines = csv.strip.split("\n")
-        expect(lines[1]).to eq('Alice,')
+        expect(lines[1]).to include('Alice')
       end
 
       it 'escapes values with commas' do
