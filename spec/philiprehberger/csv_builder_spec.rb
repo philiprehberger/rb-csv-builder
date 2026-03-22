@@ -29,7 +29,7 @@ RSpec.describe Philiprehberger::CsvBuilder do
   describe Philiprehberger::CsvBuilder::Builder do
     describe '#headers' do
       it 'returns column names as headers' do
-        builder = described_class.build(records) do
+        builder = Philiprehberger::CsvBuilder.build(records) do
           column :name
           column :email
         end
@@ -39,7 +39,7 @@ RSpec.describe Philiprehberger::CsvBuilder do
 
     describe '#to_csv' do
       it 'generates CSV with headers and data' do
-        builder = described_class.build(records) do
+        builder = Philiprehberger::CsvBuilder.build(records) do
           column :name
           column :email
         end
@@ -52,7 +52,7 @@ RSpec.describe Philiprehberger::CsvBuilder do
       end
 
       it 'supports custom transform blocks' do
-        builder = described_class.build(records) do
+        builder = Philiprehberger::CsvBuilder.build(records) do
           column :name
           column(:status) { |r| r[:active] ? 'Active' : 'Inactive' }
         end
@@ -65,7 +65,7 @@ RSpec.describe Philiprehberger::CsvBuilder do
       end
 
       it 'handles empty records' do
-        builder = described_class.build([]) do
+        builder = Philiprehberger::CsvBuilder.build([]) do
           column :name
           column :email
         end
@@ -78,7 +78,7 @@ RSpec.describe Philiprehberger::CsvBuilder do
 
       it 'handles string keys in records' do
         string_records = [{ 'name' => 'Alice', 'email' => 'alice@example.com' }]
-        builder = described_class.build(string_records) do
+        builder = Philiprehberger::CsvBuilder.build(string_records) do
           column :name
           column :email
         end
@@ -90,7 +90,7 @@ RSpec.describe Philiprehberger::CsvBuilder do
 
       it 'handles nil values' do
         nil_records = [{ name: 'Alice', email: nil }]
-        builder = described_class.build(nil_records) do
+        builder = Philiprehberger::CsvBuilder.build(nil_records) do
           column :name
           column :email
         end
@@ -102,7 +102,7 @@ RSpec.describe Philiprehberger::CsvBuilder do
 
       it 'escapes values with commas' do
         comma_records = [{ name: 'Smith, Alice', email: 'alice@example.com' }]
-        builder = described_class.build(comma_records) do
+        builder = Philiprehberger::CsvBuilder.build(comma_records) do
           column :name
           column :email
         end
@@ -115,7 +115,7 @@ RSpec.describe Philiprehberger::CsvBuilder do
     describe '#to_file' do
       it 'writes CSV to a file' do
         tmpfile = Tempfile.new(['test', '.csv'])
-        builder = described_class.build(records) do
+        builder = Philiprehberger::CsvBuilder.build(records) do
           column :name
           column :email
         end
