@@ -25,8 +25,8 @@ module Philiprehberger
       # @yield [record] optional block to transform the value
       # @yieldparam record [Object] the source record
       # @return [self]
-      def column(name, &block)
-        @columns << Column.new(name, &block)
+      def column(name, &)
+        @columns << Column.new(name, &)
         self
       end
 

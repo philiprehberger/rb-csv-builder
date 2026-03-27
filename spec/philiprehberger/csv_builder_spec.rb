@@ -50,7 +50,7 @@ RSpec.describe Philiprehberger::CsvBuilder do
       end
 
       it 'returns empty array when no columns defined' do
-        builder = Philiprehberger::CsvBuilder.build(records) { }
+        builder = Philiprehberger::CsvBuilder.build(records) {}
         expect(builder.headers).to eq([])
       end
 
