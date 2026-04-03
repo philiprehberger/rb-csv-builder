@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-04-03
+
+### Added
+- Custom CSV delimiters via `delimiter:` option
+- Custom quote character via `quote_char:` option
+- Column header aliasing via `header:` option on columns
+- Record filtering via `filter`
+- Auto-incrementing row numbers via `row_number`
+- Streaming output via `to_io`
+
 ## [0.1.5] - 2026-03-31
 
 ### Added

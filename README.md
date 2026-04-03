@@ -71,6 +71,109 @@ end
 builder.to_file('output.csv')
 ```
 
+### Custom Delimiters
+
+```ruby
+builder = Philiprehberger::CsvBuilder.build(records, delimiter: "\t") do
+  column :name
+  column :email
+end
+
+puts builder.to_csv
+# name	email
+# Alice	alice@example.com
+# Bob	bob@example.com
+```
+
+You can also set a custom quote character:
+
+```ruby
+builder = Philiprehberger::CsvBuilder.build(records, quote_char: "'") do
+  column :name
+  column :email
+end
+```
+
+### Column Aliases
+
+```ruby
+builder = Philiprehberger::CsvBuilder.build(records) do
+  column :name, header: 'Full Name'
+  column :email, header: 'Email Address'
+  column(:status, header: 'Active?') { |r| r[:active] ? 'Yes' : 'No' }
+end
+
+puts builder.to_csv
+# Full Name,Email Address,Active?
+# Alice,alice@example.com,Yes
+# Bob,bob@example.com,No
+```
+
+### Filtering
+
+```ruby
+builder = Philiprehberger::CsvBuilder.build(records) do
+  column :name
+  column :email
+  filter { |r| r[:active] }
+end
+
+puts builder.to_csv
+# name,email
+# Alice,alice@example.com
+```
+
+Multiple filters are combined with AND logic:
+
+```ruby
+builder = Philiprehberger::CsvBuilder.build(records) do
+  column :name
+  filter { |r| r[:active] }
+  filter { |r| r[:name].start_with?('A') }
+end
+```
+
+### Row Numbers
+
+```ruby
+builder = Philiprehberger::CsvBuilder.build(records) do
+  column :name
+  column :email
+  row_number
+end
+
+puts builder.to_csv
+# #,name,email
+# 1,Alice,alice@example.com
+# 2,Bob,bob@example.com
+```
+
+Customize the header label:
+
+```ruby
+row_number(header: 'Row')
+```
+
+### Streaming
+
+```ruby
+File.open('output.csv', 'w') do |file|
+  builder = Philiprehberger::CsvBuilder.build(records) do
+    column :name
+    column :email
+  end
+
+  builder.to_io(file)
+end
+```
+
+Works with any IO object, including `StringIO`:
+
+```ruby
+io = StringIO.new
+builder.to_io(io)
+```
+
 ### Headers
 
 ```ruby
@@ -86,10 +189,13 @@ builder.headers  # => ["name", "email"]
 
 | Method | Description |
 |--------|-------------|
-| `CsvBuilder.build(records, &block)` | Build a CSV using the column DSL |
-| `Builder#column(name, &block)` | Define a column with optional transform |
+| `CsvBuilder.build(records, delimiter:, quote_char:, &block)` | Build a CSV using the column DSL |
+| `Builder#column(name, header:, &block)` | Define a column with optional alias and transform |
+| `Builder#filter(&block)` | Filter records (block returns true to include) |
+| `Builder#row_number(header:)` | Add auto-incrementing row number column |
 | `Builder#to_csv` | Generate CSV as a string |
 | `Builder#to_file(path)` | Write CSV to a file |
+| `Builder#to_io(io)` | Stream CSV to any IO object |
 | `Builder#headers` | Return column header names |
 
 ## Development
