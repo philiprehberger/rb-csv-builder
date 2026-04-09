@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-04-15
+
+### Added
+- `Builder#column_stats` — per-column statistics (count, unique, nil_count, sample) across filtered records
+
 ## [0.8.0] - 2026-04-15
 
 ### Added
@@ -102,6 +107,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for hash records with symbol and string keys
 - Proper CSV escaping for values with commas and quotes
 
+[0.9.0]: https://github.com/philiprehberger/rb-csv-builder/releases/tag/v0.9.0
+[0.8.0]: https://github.com/philiprehberger/rb-csv-builder/releases/tag/v0.8.0
 [0.7.0]: https://github.com/philiprehberger/rb-csv-builder/releases/tag/v0.7.0
 [0.6.0]: https://github.com/philiprehberger/rb-csv-builder/releases/tag/v0.6.0
 [0.5.0]: https://github.com/philiprehberger/rb-csv-builder/releases/tag/v0.5.0

@@ -174,6 +174,25 @@ module Philiprehberger
         filtered_records.size
       end
 
+      # Per-column statistics across filtered records.
+      #
+      # @return [Hash{Symbol => Hash}] column name mapped to stats hash
+      #   with keys :count, :unique, :nil_count, :sample
+      def column_stats
+        recs = filtered_records
+        @columns.to_h do |col|
+          values = recs.map { |r| col.extract(r, empty_value: @empty_value) }
+          nil_count = values.count { |v| v.nil? || v == @empty_value }
+          unique_values = values.reject { |v| v.nil? || v == @empty_value }.uniq
+          [col.name, {
+            count: values.size,
+            unique: unique_values.size,
+            nil_count: nil_count,
+            sample: unique_values.first(3)
+          }]
+        end
+      end
+
       # Return the filtered records
       #
       # @return [Array]

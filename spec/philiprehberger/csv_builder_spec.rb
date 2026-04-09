@@ -1256,6 +1256,85 @@ RSpec.describe Philiprehberger::CsvBuilder do
     end
   end
 
+  describe '#column_stats' do
+    it 'returns stats for each column' do
+      recs = [
+        { name: 'Alice', email: 'alice@example.com' },
+        { name: 'Bob', email: 'bob@example.com' },
+        { name: 'Alice', email: 'alice@example.com' }
+      ]
+      builder = described_class.build(recs) do
+        column :name
+        column :email
+      end
+      stats = builder.column_stats
+      expect(stats.keys).to eq(%i[name email])
+      expect(stats[:name][:count]).to eq(3)
+      expect(stats[:name][:unique]).to eq(2)
+      expect(stats[:name][:nil_count]).to eq(0)
+      expect(stats[:name][:sample]).to eq(%w[Alice Bob])
+    end
+
+    it 'counts nil and empty values' do
+      recs = [
+        { name: 'Alice', email: nil },
+        { name: nil, email: '' },
+        { name: 'Bob', email: 'bob@example.com' }
+      ]
+      builder = described_class.build(recs) do
+        column :name
+        column :email
+      end
+      stats = builder.column_stats
+      expect(stats[:name][:nil_count]).to eq(1)
+      expect(stats[:email][:nil_count]).to eq(2)
+    end
+
+    it 'limits sample to first 3 unique values' do
+      recs = %w[a b c d e].map { |v| { letter: v } }
+      builder = described_class.build(recs) do
+        column :letter
+      end
+      stats = builder.column_stats
+      expect(stats[:letter][:sample]).to eq(%w[a b c])
+    end
+
+    it 'respects filters' do
+      recs = [
+        { name: 'Alice', active: true },
+        { name: 'Bob', active: false },
+        { name: 'Charlie', active: true }
+      ]
+      builder = described_class.build(recs) do
+        column :name
+        filter { |r| r[:active] }
+      end
+      stats = builder.column_stats
+      expect(stats[:name][:count]).to eq(2)
+      expect(stats[:name][:unique]).to eq(2)
+    end
+
+    it 'returns empty stats for no records' do
+      builder = described_class.build([]) do
+        column :name
+      end
+      stats = builder.column_stats
+      expect(stats[:name]).to eq({ count: 0, unique: 0, nil_count: 0, sample: [] })
+    end
+
+    it 'uses custom empty_value for nil detection' do
+      recs = [{ name: 'Alice', email: nil }, { name: 'Bob', email: 'b@b.com' }]
+      builder = described_class.build(recs, empty_value: 'N/A') do
+        column :name
+        column :email
+      end
+      stats = builder.column_stats
+      expect(stats[:email][:nil_count]).to eq(1)
+      expect(stats[:email][:unique]).to eq(1)
+      expect(stats[:email][:sample]).to eq(['b@b.com'])
+    end
+  end
+
   describe '#row_count' do
     it 'counts all records when no filter is applied' do
       builder = described_class.build([{ a: 1 }, { a: 2 }, { a: 3 }]) do
