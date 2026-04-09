@@ -23,6 +23,24 @@ module Philiprehberger
         @row_number_header = nil
         @delimiter = delimiter
         @quote_char = quote_char
+        @sort_by = nil
+        @sort_direction = :asc
+      end
+
+      # Sort records before CSV output
+      #
+      # @param direction [Symbol] :asc (default) or :desc
+      # @yield [record] block returning the sort key
+      # @yieldparam record [Object] the source record
+      # @return [self]
+      # @raise [Error] if direction is not :asc or :desc
+      def sort_by(direction: :asc, &block)
+        raise Error, 'A block is required for sort_by' unless block
+        raise Error, "direction must be :asc or :desc (got #{direction.inspect})" unless %i[asc desc].include?(direction)
+
+        @sort_by = block
+        @sort_direction = direction
+        self
       end
 
       # Define a column
@@ -71,6 +89,10 @@ module Philiprehberger
         result = @records
         @filters.each do |f|
           result = result.select(&f)
+        end
+        if @sort_by
+          result = result.sort_by(&@sort_by)
+          result = result.reverse if @sort_direction == :desc
         end
         result
       end

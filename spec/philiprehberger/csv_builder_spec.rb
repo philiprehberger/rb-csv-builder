@@ -448,6 +448,107 @@ RSpec.describe Philiprehberger::CsvBuilder do
     end
   end
 
+  describe 'sort_by' do
+    let(:unsorted) do
+      [
+        { name: 'Charlie', age: 30 },
+        { name: 'Alice', age: 25 },
+        { name: 'Bob', age: 35 }
+      ]
+    end
+
+    it 'sorts records ascending by default' do
+      builder = described_class.build(unsorted) do
+        column :name
+        sort_by { |r| r[:name] }
+      end
+
+      csv = builder.to_csv
+      lines = csv.strip.split("\n")
+      expect(lines[1]).to eq('Alice')
+      expect(lines[2]).to eq('Bob')
+      expect(lines[3]).to eq('Charlie')
+    end
+
+    it 'sorts records descending when direction: :desc' do
+      builder = described_class.build(unsorted) do
+        column :name
+        sort_by(direction: :desc) { |r| r[:name] }
+      end
+
+      csv = builder.to_csv
+      lines = csv.strip.split("\n")
+      expect(lines[1]).to eq('Charlie')
+      expect(lines[2]).to eq('Bob')
+      expect(lines[3]).to eq('Alice')
+    end
+
+    it 'sorts by numeric key' do
+      builder = described_class.build(unsorted) do
+        column :name
+        column :age
+        sort_by { |r| r[:age] }
+      end
+
+      lines = builder.to_csv.strip.split("\n")
+      expect(lines[1]).to eq('Alice,25')
+      expect(lines[2]).to eq('Charlie,30')
+      expect(lines[3]).to eq('Bob,35')
+    end
+
+    it 'combines with filter' do
+      builder = described_class.build(unsorted) do
+        column :name
+        filter { |r| r[:age] >= 30 }
+        sort_by { |r| r[:name] }
+      end
+
+      lines = builder.to_csv.strip.split("\n")
+      expect(lines.size).to eq(3)
+      expect(lines[1]).to eq('Bob')
+      expect(lines[2]).to eq('Charlie')
+    end
+
+    it 'combines with row_number (numbered after sort)' do
+      builder = described_class.build(unsorted) do
+        column :name
+        row_number
+        sort_by { |r| r[:name] }
+      end
+
+      lines = builder.to_csv.strip.split("\n")
+      expect(lines[1]).to eq('1,Alice')
+      expect(lines[2]).to eq('2,Bob')
+      expect(lines[3]).to eq('3,Charlie')
+    end
+
+    it 'raises when no block is given' do
+      expect do
+        described_class.build(unsorted) do
+          column :name
+          sort_by
+        end
+      end.to raise_error(described_class::Error, /block is required/)
+    end
+
+    it 'raises when direction is invalid' do
+      expect do
+        described_class.build(unsorted) do
+          column :name
+          sort_by(direction: :sideways) { |r| r[:name] }
+        end
+      end.to raise_error(described_class::Error, /direction must be/)
+    end
+
+    it 'leaves records untouched when sort_by is not called' do
+      builder = described_class.build(unsorted) { column :name }
+      lines = builder.to_csv.strip.split("\n")
+      expect(lines[1]).to eq('Charlie')
+      expect(lines[2]).to eq('Alice')
+      expect(lines[3]).to eq('Bob')
+    end
+  end
+
   describe 'row_number' do
     it 'adds auto-incrementing row number as first column' do
       builder = described_class.build(records) do

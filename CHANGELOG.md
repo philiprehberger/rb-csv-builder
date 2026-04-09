@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-04-09
+
+### Added
+- Record sorting via `sort_by` DSL method with `:asc`/`:desc` direction support
+
 ## [0.2.0] - 2026-04-03
 
 ### Added
