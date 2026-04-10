@@ -25,6 +25,9 @@ module Philiprehberger
         @quote_char = quote_char
         @sort_by = nil
         @sort_direction = :asc
+        @limit_count = nil
+        @offset_count = nil
+        @footer_block = nil
       end
 
       # Sort records before CSV output
@@ -40,6 +43,34 @@ module Philiprehberger
 
         @sort_by = block
         @sort_direction = direction
+        self
+      end
+
+      # Limit the number of output rows
+      #
+      # @param n [Integer] maximum rows
+      # @return [self]
+      def limit(n)
+        @limit_count = n
+        self
+      end
+
+      # Skip the first N filtered/sorted records
+      #
+      # @param n [Integer] number of rows to skip
+      # @return [self]
+      def offset(n)
+        @offset_count = n
+        self
+      end
+
+      # Append a computed footer row after all data rows
+      #
+      # @yield [Array] filtered records
+      # @yieldreturn [Array] footer row values
+      # @return [self]
+      def footer(&block)
+        @footer_block = block
         self
       end
 
@@ -94,6 +125,8 @@ module Philiprehberger
           result = result.sort_by(&@sort_by)
           result = result.reverse if @sort_direction == :desc
         end
+        result = result.drop(@offset_count) if @offset_count
+        result = result.first(@limit_count) if @limit_count
         result
       end
 
@@ -101,11 +134,13 @@ module Philiprehberger
       #
       # @return [String]
       def to_csv
+        recs = filtered_records
         CSV.generate(**csv_options) do |csv|
           csv << headers
-          filtered_records.each_with_index do |record, index|
+          recs.each_with_index do |record, index|
             csv << build_row(record, index)
           end
+          csv << @footer_block.call(recs) if @footer_block
         end
       end
 
@@ -122,11 +157,13 @@ module Philiprehberger
       # @param io [IO, StringIO] the IO object to write to
       # @return [void]
       def to_io(io)
+        recs = filtered_records
         csv = CSV.new(io, **csv_options)
         csv << headers
-        filtered_records.each_with_index do |record, index|
+        recs.each_with_index do |record, index|
           csv << build_row(record, index)
         end
+        csv << @footer_block.call(recs) if @footer_block
       end
 
       private

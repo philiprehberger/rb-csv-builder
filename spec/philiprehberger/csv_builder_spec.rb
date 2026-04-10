@@ -712,4 +712,87 @@ RSpec.describe Philiprehberger::CsvBuilder do
       end
     end
   end
+
+  describe '#footer' do
+    it 'appends a computed footer row' do
+      records = [{ name: 'Alice', amount: 10 }, { name: 'Bob', amount: 20 }]
+      builder = Philiprehberger::CsvBuilder.build(records) do
+        column :name
+        column :amount
+        footer { |recs| ['Total', recs.sum { |r| r[:amount] }] }
+      end
+      csv = builder.to_csv
+      lines = csv.strip.split("\n")
+      expect(lines.last).to eq('Total,30')
+    end
+
+    it 'includes footer in to_io output' do
+      records = [{ name: 'A', amount: 5 }]
+      builder = Philiprehberger::CsvBuilder.build(records) do
+        column :name
+        column :amount
+        footer { |_recs| ['Sum', 5] }
+      end
+      io = StringIO.new
+      builder.to_io(io)
+      expect(io.string).to include('Sum,5')
+    end
+
+    it 'does not add footer when none defined' do
+      builder = Philiprehberger::CsvBuilder.build(records) do
+        column :name
+      end
+      lines = builder.to_csv.strip.split("\n")
+      expect(lines.length).to eq(3) # header + 2 data rows
+    end
+  end
+
+  describe '#limit' do
+    it 'caps the number of output rows' do
+      recs = (1..10).map { |i| { n: i } }
+      builder = Philiprehberger::CsvBuilder.build(recs) do
+        column :n
+        limit 3
+      end
+      lines = builder.to_csv.strip.split("\n")
+      expect(lines.length).to eq(4) # header + 3 rows
+    end
+
+    it 'returns all when limit exceeds count' do
+      builder = Philiprehberger::CsvBuilder.build(records) do
+        column :name
+        limit 100
+      end
+      expect(builder.filtered_records.length).to eq(2)
+    end
+  end
+
+  describe '#offset' do
+    it 'skips the first N records' do
+      recs = (1..5).map { |i| { n: i } }
+      builder = Philiprehberger::CsvBuilder.build(recs) do
+        column :n
+        offset 2
+      end
+      expect(builder.filtered_records.map { |r| r[:n] }).to eq([3, 4, 5])
+    end
+
+    it 'combines with limit for pagination' do
+      recs = (1..10).map { |i| { n: i } }
+      builder = Philiprehberger::CsvBuilder.build(recs) do
+        column :n
+        offset 3
+        limit 2
+      end
+      expect(builder.filtered_records.map { |r| r[:n] }).to eq([4, 5])
+    end
+
+    it 'returns empty when offset exceeds count' do
+      builder = Philiprehberger::CsvBuilder.build(records) do
+        column :name
+        offset 100
+      end
+      expect(builder.filtered_records).to be_empty
+    end
+  end
 end
