@@ -16,7 +16,9 @@ module Philiprehberger
       # @param records [Array] the source records
       # @param delimiter [String] the column separator (default: ",")
       # @param quote_char [String] the quote character (default: '"')
-      def initialize(records, delimiter: ',', quote_char: '"')
+      # @param bom [Boolean] prepend UTF-8 BOM (default: false)
+      # @param encoding [String] output encoding name (default: "UTF-8")
+      def initialize(records, delimiter: ',', quote_char: '"', bom: false, encoding: 'UTF-8')
         @records = records
         @columns = []
         @filters = []
@@ -28,6 +30,8 @@ module Philiprehberger
         @limit_count = nil
         @offset_count = nil
         @footer_block = nil
+        @bom = bom
+        @encoding = encoding
       end
 
       # Sort records before CSV output
@@ -39,7 +43,8 @@ module Philiprehberger
       # @raise [Error] if direction is not :asc or :desc
       def sort_by(direction: :asc, &block)
         raise Error, 'A block is required for sort_by' unless block
-        raise Error, "direction must be :asc or :desc (got #{direction.inspect})" unless %i[asc desc].include?(direction)
+        raise Error, "direction must be :asc or :desc (got #{direction.inspect})" unless %i[asc
+                                                                                            desc].include?(direction)
 
         @sort_by = block
         @sort_direction = direction
@@ -135,13 +140,15 @@ module Philiprehberger
       # @return [String]
       def to_csv
         recs = filtered_records
-        CSV.generate(**csv_options) do |csv|
+        csv_string = CSV.generate(**csv_options) do |csv|
           csv << headers
           recs.each_with_index do |record, index|
             csv << build_row(record, index)
           end
           csv << @footer_block.call(recs) if @footer_block
         end
+        csv_string = csv_string.encode(@encoding) unless @encoding == 'UTF-8'
+        @bom ? "\xEF\xBB\xBF#{csv_string}" : csv_string
       end
 
       # Write the CSV to a file
@@ -149,7 +156,7 @@ module Philiprehberger
       # @param path [String] the output file path
       # @return [void]
       def to_file(path)
-        File.write(path, to_csv)
+        File.binwrite(path, to_csv)
       end
 
       # Stream CSV to any IO object
@@ -157,6 +164,7 @@ module Philiprehberger
       # @param io [IO, StringIO] the IO object to write to
       # @return [void]
       def to_io(io)
+        io.write("\xEF\xBB\xBF") if @bom
         recs = filtered_records
         csv = CSV.new(io, **csv_options)
         csv << headers
