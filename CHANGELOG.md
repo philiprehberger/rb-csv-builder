@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-04-15
+
+### Added
+- `Builder#write_to(path, mode:)` for writing CSV with an explicit file mode
+- `Builder#append_to(path)` shorthand that appends data rows (no header, no BOM) to an existing file
+- `row_sep:` option on `CsvBuilder.build` for custom line separators (e.g. `"\r\n"`)
+- `empty_value:` option on `CsvBuilder.build` to replace `nil` / empty values with a placeholder
+- `Builder#to_s` alias for `to_csv` (enables string interpolation)
+- `Builder#to_a` returns the CSV as `[headers, *rows, footer?]`
+
+### Fixed
+- `Column#extract` no longer silently drops `false` and `0` values when looking up symbol keys in a hash record (hash lookup now uses `Hash#key?` instead of `||`)
+
 ## [0.6.0] - 2026-04-14
 
 ### Added
@@ -84,6 +97,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for hash records with symbol and string keys
 - Proper CSV escaping for values with commas and quotes
 
+[0.7.0]: https://github.com/philiprehberger/rb-csv-builder/releases/tag/v0.7.0
 [0.6.0]: https://github.com/philiprehberger/rb-csv-builder/releases/tag/v0.6.0
 [0.5.0]: https://github.com/philiprehberger/rb-csv-builder/releases/tag/v0.5.0
 [0.4.0]: https://github.com/philiprehberger/rb-csv-builder/releases/tag/v0.4.0

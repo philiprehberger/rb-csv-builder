@@ -221,7 +221,7 @@ RSpec.describe Philiprehberger::CsvBuilder do
         csv = builder.to_csv
         lines = csv.strip.split("\n")
         expect(lines[1]).to eq('Alice,true')
-        expect(lines[2]).to include('Bob')
+        expect(lines[2]).to eq('Bob,false')
       end
 
       it 'supports objects responding to method names' do
@@ -1055,6 +1055,204 @@ RSpec.describe Philiprehberger::CsvBuilder do
         offset 100
       end
       expect(builder.filtered_records).to be_empty
+    end
+  end
+
+  describe '#to_s' do
+    it 'is an alias for to_csv' do
+      builder = described_class.build(records) do
+        column :name
+        column :email
+      end
+      expect(builder.to_s).to eq(builder.to_csv)
+    end
+
+    it 'works with string interpolation' do
+      builder = described_class.build(records) { column :name }
+      expect("CSV:\n#{builder}").to include("CSV:\nname\n")
+    end
+
+    it 'returns empty-header-only string for empty records' do
+      builder = described_class.build([]) { column :name }
+      expect(builder.to_s.strip).to eq('name')
+    end
+  end
+
+  describe '#to_a' do
+    it 'returns an array with headers as the first row' do
+      builder = described_class.build(records) do
+        column :name
+        column :email
+      end
+      rows = builder.to_a
+      expect(rows.first).to eq(%w[name email])
+    end
+
+    it 'returns one row per record' do
+      builder = described_class.build(records) do
+        column :name
+        column :email
+      end
+      expect(builder.to_a.length).to eq(3) # header + 2 records
+    end
+
+    it 'includes the footer row when defined' do
+      recs = [{ name: 'A', amount: 1 }, { name: 'B', amount: 2 }]
+      builder = described_class.build(recs) do
+        column :name
+        column :amount
+        footer { |r| ['Total', r.sum { |x| x[:amount] }] }
+      end
+      expect(builder.to_a.last).to eq(['Total', 3])
+    end
+
+    it 'returns just the header row for empty records' do
+      builder = described_class.build([]) { column :name }
+      expect(builder.to_a).to eq([['name']])
+    end
+
+    it 'raises ValidationError when a row fails validation' do
+      builder = described_class.build(records) do
+        column :name
+        validate { |_row| false }
+      end
+      expect { builder.to_a }.to raise_error(described_class::ValidationError)
+    end
+  end
+
+  describe '#write_to' do
+    it 'overwrites the file by default' do
+      tmpfile = Tempfile.new(['write_to', '.csv'])
+      builder = described_class.build(records) do
+        column :name
+        column :email
+      end
+      builder.write_to(tmpfile.path)
+      content = File.read(tmpfile.path)
+      lines = content.strip.split("\n")
+      expect(lines[0]).to eq('name,email')
+      expect(lines.size).to eq(3)
+    ensure
+      tmpfile&.unlink
+    end
+
+    it 'appends body rows (no header) when mode is "ab"' do
+      tmpfile = Tempfile.new(['append', '.csv'])
+      first = described_class.build([{ n: 1 }]) { column :n }
+      second = described_class.build([{ n: 2 }, { n: 3 }]) { column :n }
+      first.write_to(tmpfile.path)
+      second.write_to(tmpfile.path, mode: 'ab')
+
+      lines = File.read(tmpfile.path).strip.split("\n")
+      expect(lines).to eq(%w[n 1 2 3])
+    ensure
+      tmpfile&.unlink
+    end
+
+    it 'raises Errno::ENOENT for an invalid path' do
+      builder = described_class.build(records) { column :name }
+      expect { builder.write_to('/nonexistent/dir/out.csv') }.to raise_error(Errno::ENOENT)
+    end
+  end
+
+  describe '#append_to' do
+    it 'appends data rows to an existing file' do
+      tmpfile = Tempfile.new(['append_to', '.csv'])
+      first = described_class.build([{ n: 1 }]) { column :n }
+      first.to_file(tmpfile.path)
+
+      second = described_class.build([{ n: 2 }]) { column :n }
+      second.append_to(tmpfile.path)
+
+      lines = File.read(tmpfile.path).strip.split("\n")
+      expect(lines).to eq(%w[n 1 2])
+    ensure
+      tmpfile&.unlink
+    end
+
+    it 'does not include BOM bytes when appending even if builder was built with bom: true' do
+      tmpfile = Tempfile.new(['append_bom', '.csv'])
+      File.binwrite(tmpfile.path, "n\n1\n")
+
+      second = described_class.build([{ n: 2 }], bom: true) { column :n }
+      second.append_to(tmpfile.path)
+
+      bytes = File.binread(tmpfile.path).bytes
+      # Only the initial content should exist; the appended section must not introduce a BOM
+      bom_count = bytes.each_cons(3).count { |a, b, c| [a, b, c] == [0xEF, 0xBB, 0xBF] }
+      expect(bom_count).to eq(0)
+    ensure
+      tmpfile&.unlink
+    end
+  end
+
+  describe 'row_sep option' do
+    it 'uses LF by default' do
+      builder = described_class.build(records) do
+        column :name
+        column :email
+      end
+      expect(builder.to_csv).to include("name,email\n")
+      expect(builder.to_csv).not_to include("\r\n")
+    end
+
+    it 'uses CRLF when row_sep is "\r\n"' do
+      builder = described_class.build(records, row_sep: "\r\n") do
+        column :name
+        column :email
+      end
+      csv = builder.to_csv
+      expect(csv).to include("name,email\r\n")
+      expect(csv).to include("Alice,alice@example.com\r\n")
+    end
+
+    it 'supports arbitrary row separators' do
+      builder = described_class.build([{ n: 1 }, { n: 2 }], row_sep: '|END|') do
+        column :n
+      end
+      expect(builder.to_csv).to eq('n|END|1|END|2|END|')
+    end
+  end
+
+  describe 'empty_value option' do
+    it 'replaces nil values with the given placeholder' do
+      recs = [{ name: 'Alice', email: nil }]
+      builder = described_class.build(recs, empty_value: 'N/A') do
+        column :name
+        column :email
+      end
+      lines = builder.to_csv.strip.split("\n")
+      expect(lines[1]).to eq('Alice,N/A')
+    end
+
+    it 'replaces empty strings with the placeholder' do
+      recs = [{ name: 'Alice', email: '' }]
+      builder = described_class.build(recs, empty_value: '-') do
+        column :name
+        column :email
+      end
+      lines = builder.to_csv.strip.split("\n")
+      expect(lines[1]).to eq('Alice,-')
+    end
+
+    it 'defaults to empty string when not set' do
+      recs = [{ name: 'Alice', email: nil }]
+      builder = described_class.build(recs) do
+        column :name
+        column :email
+      end
+      lines = builder.to_csv.strip.split("\n")
+      expect(lines[1]).to match(/\AAlice,("")?\z/)
+    end
+
+    it 'does not replace values that merely contain empty substrings' do
+      recs = [{ name: 'Alice', email: 'a@b.com' }]
+      builder = described_class.build(recs, empty_value: 'N/A') do
+        column :name
+        column :email
+      end
+      lines = builder.to_csv.strip.split("\n")
+      expect(lines[1]).to eq('Alice,a@b.com')
     end
   end
 end

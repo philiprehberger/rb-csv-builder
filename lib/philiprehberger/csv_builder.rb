@@ -14,19 +14,22 @@ module Philiprehberger
     # @param records [Array] the source records
     # @param delimiter [String] the column separator (default: ",")
     # @param quote_char [String] the quote character (default: '"')
+    # @param row_sep [String] the line separator (default: "\n")
     # @param bom [Boolean] prepend UTF-8 BOM for Excel compatibility (default: false)
     # @param encoding [String] output encoding name (default: "UTF-8")
+    # @param empty_value [String] string used to represent nil/empty values (default: "")
     # @yield [builder] the builder instance for defining columns
     # @yieldparam builder [Builder]
     # @return [Builder] the configured builder
     # @raise [Error] if no block is given
-    def self.build(records, delimiter: ',', quote_char: '"', bom: false, encoding: 'UTF-8', &block)
+    def self.build(records, delimiter: ',', quote_char: '"', row_sep: "\n",
+                   bom: false, encoding: 'UTF-8', empty_value: '', &block)
       raise Error, 'A block is required' unless block
 
       builder = Builder.new(
         records,
-        delimiter: delimiter, quote_char: quote_char,
-        bom: bom, encoding: encoding
+        delimiter: delimiter, quote_char: quote_char, row_sep: row_sep,
+        bom: bom, encoding: encoding, empty_value: empty_value
       )
       builder.instance_eval(&block)
       builder

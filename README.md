@@ -314,6 +314,62 @@ io = StringIO.new
 builder.to_io(io)
 ```
 
+### Writing and Appending
+
+`write_to` accepts an explicit open mode so you can overwrite or append:
+
+```ruby
+# Overwrite (default behaviour, same as to_file)
+builder.write_to('output.csv')
+
+# Append data rows only (no header, no BOM) to an existing file
+builder.append_to('output.csv')
+
+# Or explicitly
+builder.write_to('output.csv', mode: 'ab')
+```
+
+`append_to` is handy for combining multiple builders into one file while keeping a single header row.
+
+### Custom Line Separator
+
+Use `row_sep:` to switch between Unix (`\n`, default), Windows (`\r\n`) or any other line ending:
+
+```ruby
+builder = Philiprehberger::CsvBuilder.build(records, row_sep: "\r\n") do
+  column :name
+  column :email
+end
+```
+
+### Custom Empty Value
+
+Replace `nil` and empty string values with a placeholder:
+
+```ruby
+records = [{ name: 'Alice', email: nil }]
+
+builder = Philiprehberger::CsvBuilder.build(records, empty_value: 'N/A') do
+  column :name
+  column :email
+end
+
+puts builder.to_csv
+# name,email
+# Alice,N/A
+```
+
+### String and Array Conversion
+
+```ruby
+# to_s is an alias for to_csv (handy for string interpolation)
+puts "CSV:\n#{builder}"
+
+# to_a returns [headers, *rows, footer?] for programmatic use
+builder.to_a
+# => [["name", "email"], ["Alice", "alice@example.com"], ["Bob", "bob@example.com"]]
+```
+
 ### Headers
 
 ```ruby
@@ -329,7 +385,7 @@ builder.headers  # => ["name", "email"]
 
 | Method | Description |
 |--------|-------------|
-| `CsvBuilder.build(records, delimiter:, quote_char:, bom:, encoding:, &block)` | Build a CSV using the column DSL |
+| `CsvBuilder.build(records, delimiter:, quote_char:, row_sep:, bom:, encoding:, empty_value:, &block)` | Build a CSV using the column DSL |
 | `CsvBuilder.tsv(records, **options, &block)` | Shorthand for tab-separated output |
 | `CsvBuilder.psv(records, **options, &block)` | Shorthand for pipe-separated output |
 | `Builder#column(name, header:, &block)` | Define a column with optional alias and transform |
@@ -343,7 +399,11 @@ builder.headers  # => ["name", "email"]
 | `Builder#offset(n)` | Skip first N filtered/sorted records |
 | `Builder#row_number(header:)` | Add auto-incrementing row number column |
 | `Builder#to_csv` | Generate CSV as a string |
-| `Builder#to_file(path)` | Write CSV to a file |
+| `Builder#to_s` | Alias for `to_csv` (enables string interpolation) |
+| `Builder#to_a` | Return CSV as an array of row arrays (headers + data + footer) |
+| `Builder#to_file(path)` | Write CSV to a file (overwrites) |
+| `Builder#write_to(path, mode:)` | Write CSV with an explicit file mode (`'wb'` default, `'ab'` to append body only) |
+| `Builder#append_to(path)` | Append data rows (no header, no BOM) to an existing CSV file |
 | `Builder#to_io(io)` | Stream CSV to any IO object |
 | `Builder#headers` | Return column header names |
 

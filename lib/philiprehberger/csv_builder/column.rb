@@ -22,17 +22,25 @@ module Philiprehberger
       # Extract the value for this column from a record
       #
       # @param record [Hash, Object] the source record
+      # @param empty_value [String] placeholder for nil / missing values
       # @return [String] the extracted and converted value
-      def extract(record)
+      def extract(record, empty_value: '')
         value = if @transform
                   @transform.call(record)
                 elsif record.is_a?(Hash)
-                  record[@name] || record[@name.to_s]
+                  if record.key?(@name)
+                    record[@name]
+                  else
+                    record[@name.to_s]
+                  end
                 elsif record.respond_to?(@name)
                   record.send(@name)
                 end
 
-        value.to_s
+        return empty_value if value.nil?
+
+        str = value.to_s
+        str.empty? ? empty_value : str
       end
 
       # Return the header label for this column

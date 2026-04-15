@@ -16,9 +16,12 @@ module Philiprehberger
       # @param records [Array] the source records
       # @param delimiter [String] the column separator (default: ",")
       # @param quote_char [String] the quote character (default: '"')
+      # @param row_sep [String] the line separator (default: "\n")
       # @param bom [Boolean] prepend UTF-8 BOM (default: false)
       # @param encoding [String] output encoding name (default: "UTF-8")
-      def initialize(records, delimiter: ',', quote_char: '"', bom: false, encoding: 'UTF-8')
+      # @param empty_value [String] placeholder for nil/empty values (default: "")
+      def initialize(records, delimiter: ',', quote_char: '"', row_sep: "\n",
+                     bom: false, encoding: 'UTF-8', empty_value: '')
         @records = records
         @columns = []
         @filters = []
@@ -26,6 +29,7 @@ module Philiprehberger
         @row_number_header = nil
         @delimiter = delimiter
         @quote_char = quote_char
+        @row_sep = row_sep
         @sort_by = nil
         @sort_direction = :asc
         @limit_count = nil
@@ -34,6 +38,7 @@ module Philiprehberger
         @header_transform = nil
         @bom = bom
         @encoding = encoding
+        @empty_value = empty_value
       end
 
       # Sort records before CSV output
@@ -111,7 +116,7 @@ module Philiprehberger
         @footer_block = lambda do |recs|
           columns.map do |col|
             if col.name == col_name
-              values = recs.map { |r| col.extract(r).to_f }
+              values = recs.map { |r| col.extract(r, empty_value: @empty_value).to_f }
               block ? block.call(values) : values.sum
             else
               ''
@@ -196,12 +201,45 @@ module Philiprehberger
         @bom ? "\xEF\xBB\xBF#{csv_string}" : csv_string
       end
 
+      # Alias for {#to_csv} so instances behave nicely with string interpolation.
+      #
+      # @return [String]
+      def to_s
+        to_csv
+      end
+
       # Write the CSV to a file
       #
       # @param path [String] the output file path
       # @return [void]
       def to_file(path)
         File.binwrite(path, to_csv)
+      end
+
+      # Write the CSV to a file with an explicit mode. Useful for appending
+      # to existing files or combining multiple builders into one file.
+      #
+      # When appending (`mode: 'ab'` / `'a'`), the header row and BOM from
+      # subsequent writes are suppressed so the file keeps a single header.
+      #
+      # @param path [String] the output file path
+      # @param mode [String] file open mode (default: "wb")
+      # @return [void]
+      def write_to(path, mode: 'wb')
+        appending = mode.start_with?('a')
+        if appending
+          File.open(path, mode) { |f| write_body_rows(f) }
+        else
+          to_file(path)
+        end
+      end
+
+      # Append data rows (no header, no BOM) to an existing CSV file.
+      #
+      # @param path [String] the output file path
+      # @return [void]
+      def append_to(path)
+        write_to(path, mode: 'ab')
       end
 
       # Stream CSV to any IO object
@@ -221,11 +259,38 @@ module Philiprehberger
         csv << @footer_block.call(recs) if @footer_block
       end
 
+      # Return the CSV as an array of row arrays (headers + data + footer).
+      #
+      # @return [Array<Array>]
+      # @raise [ValidationError] if any row fails validation
+      def to_a
+        recs = filtered_records
+        validate_rows!(recs) unless @validations.empty?
+        rows = [headers]
+        recs.each_with_index { |record, index| rows << build_row(record, index) }
+        rows << @footer_block.call(recs) if @footer_block
+        rows
+      end
+
       private
 
       # @return [Hash] CSV library options
       def csv_options
-        { col_sep: @delimiter, quote_char: @quote_char }
+        { col_sep: @delimiter, quote_char: @quote_char, row_sep: @row_sep }
+      end
+
+      # Write only the data rows (and footer) to the given IO. Used by
+      # {#write_to} / {#append_to} so subsequent appends don't duplicate
+      # the header row.
+      #
+      # @param io [IO] the IO object to write to
+      # @return [void]
+      def write_body_rows(io)
+        recs = filtered_records
+        validate_rows!(recs) unless @validations.empty?
+        csv = CSV.new(io, **csv_options)
+        recs.each_with_index { |record, index| csv << build_row(record, index) }
+        csv << @footer_block.call(recs) if @footer_block
       end
 
       # Validate all rows against registered validation blocks
@@ -236,7 +301,7 @@ module Philiprehberger
       def validate_rows!(recs)
         recs.each_with_index do |record, index|
           row_hash = @columns.to_h do |col|
-            [col.name, col.extract(record)]
+            [col.name, col.extract(record, empty_value: @empty_value)]
           end
           @validations.each do |v|
             result = v.call(row_hash)
@@ -255,7 +320,7 @@ module Philiprehberger
       # @param index [Integer] zero-based row index
       # @return [Array]
       def build_row(record, index)
-        row = @columns.map { |col| col.extract(record) }
+        row = @columns.map { |col| col.extract(record, empty_value: @empty_value) }
         @row_number_header ? [index + 1] + row : row
       end
     end
