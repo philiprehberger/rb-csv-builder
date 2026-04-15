@@ -294,6 +294,20 @@ builder = Philiprehberger::CsvBuilder.build(records, encoding: 'ISO-8859-1') do
 end
 ```
 
+### Row Count
+
+Get the number of rows that will be emitted (respects filters, sorts, offsets, and limits) without building the CSV:
+
+```ruby
+builder = Philiprehberger::CsvBuilder.build(records) do
+  column :name
+  filter { |r| r[:active] }
+  limit 50
+end
+
+builder.row_count  # => 50
+```
+
 ### Streaming
 
 ```ruby
@@ -406,6 +420,7 @@ builder.headers  # => ["name", "email"]
 | `Builder#append_to(path)` | Append data rows (no header, no BOM) to an existing CSV file |
 | `Builder#to_io(io)` | Stream CSV to any IO object |
 | `Builder#headers` | Return column header names |
+| `Builder#row_count` | Number of data rows after filters, sorts, offsets, and limits |
 
 ## Development
 

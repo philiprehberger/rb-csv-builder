@@ -166,6 +166,14 @@ module Philiprehberger
         @row_number_header ? [@row_number_header] + base : base
       end
 
+      # Number of data rows the builder will emit (headers and footer excluded).
+      # Applies all configured filters, sorts, offsets, and limits.
+      #
+      # @return [Integer]
+      def row_count
+        filtered_records.size
+      end
+
       # Return the filtered records
       #
       # @return [Array]
