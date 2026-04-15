@@ -22,6 +22,7 @@ module Philiprehberger
         @records = records
         @columns = []
         @filters = []
+        @validations = []
         @row_number_header = nil
         @delimiter = delimiter
         @quote_char = quote_char
@@ -30,6 +31,7 @@ module Philiprehberger
         @limit_count = nil
         @offset_count = nil
         @footer_block = nil
+        @header_transform = nil
         @bom = bom
         @encoding = encoding
       end
@@ -79,6 +81,46 @@ module Philiprehberger
         self
       end
 
+      # Register a validation block for rows
+      #
+      # @yield [row] block that validates the row hash
+      # @yieldparam row [Hash] column-name to value mapping
+      # @return [self]
+      def validate(&block)
+        @validations << block
+        self
+      end
+
+      # Register a proc applied to all column headers during rendering
+      #
+      # @yield [name] block that transforms a header name
+      # @yieldparam name [String] the original header label
+      # @return [self]
+      def transform_header(&block)
+        @header_transform = block
+        self
+      end
+
+      # Shorthand for adding a footer row with a computed total for the named column
+      #
+      # @param column_name [Symbol, String] the column to total
+      # @yield [values] optional block to compute the total (receives array of numeric values)
+      # @return [self]
+      def total(column_name, &block)
+        col_name = column_name.to_sym
+        @footer_block = lambda do |recs|
+          columns.map do |col|
+            if col.name == col_name
+              values = recs.map { |r| col.extract(r).to_f }
+              block ? block.call(values) : values.sum
+            else
+              ''
+            end
+          end
+        end
+        self
+      end
+
       # Define a column
       #
       # @param name [Symbol, String] the column name
@@ -115,6 +157,7 @@ module Philiprehberger
       # @return [Array<String>]
       def headers
         base = @columns.map(&:header)
+        base = base.map { |h| @header_transform.call(h) } if @header_transform
         @row_number_header ? [@row_number_header] + base : base
       end
 
@@ -138,8 +181,10 @@ module Philiprehberger
       # Generate the CSV as a string
       #
       # @return [String]
+      # @raise [ValidationError] if any row fails validation
       def to_csv
         recs = filtered_records
+        validate_rows!(recs) unless @validations.empty?
         csv_string = CSV.generate(**csv_options) do |csv|
           csv << headers
           recs.each_with_index do |record, index|
@@ -163,9 +208,11 @@ module Philiprehberger
       #
       # @param io [IO, StringIO] the IO object to write to
       # @return [void]
+      # @raise [ValidationError] if any row fails validation
       def to_io(io)
         io.write("\xEF\xBB\xBF") if @bom
         recs = filtered_records
+        validate_rows!(recs) unless @validations.empty?
         csv = CSV.new(io, **csv_options)
         csv << headers
         recs.each_with_index do |record, index|
@@ -179,6 +226,27 @@ module Philiprehberger
       # @return [Hash] CSV library options
       def csv_options
         { col_sep: @delimiter, quote_char: @quote_char }
+      end
+
+      # Validate all rows against registered validation blocks
+      #
+      # @param recs [Array] the filtered records
+      # @return [void]
+      # @raise [ValidationError] if any row fails validation
+      def validate_rows!(recs)
+        recs.each_with_index do |record, index|
+          row_hash = @columns.to_h do |col|
+            [col.name, col.extract(record)]
+          end
+          @validations.each do |v|
+            result = v.call(row_hash)
+            raise ValidationError, "Row #{index + 1} failed validation" unless result
+          rescue ValidationError
+            raise
+          rescue StandardError => e
+            raise ValidationError, "Row #{index + 1} failed validation: #{e.message}"
+          end
+        end
       end
 
       # Build a single row array for the given record
