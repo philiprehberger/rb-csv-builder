@@ -384,6 +384,31 @@ builder.to_a
 # => [["name", "email"], ["Alice", "alice@example.com"], ["Bob", "bob@example.com"]]
 ```
 
+### Column Statistics
+
+Inspect per-column statistics without generating CSV output:
+
+```ruby
+records = [
+  { name: 'Alice', email: 'alice@example.com' },
+  { name: 'Bob', email: nil },
+  { name: 'Alice', email: 'alice@example.com' }
+]
+
+builder = Philiprehberger::CsvBuilder.build(records) do
+  column :name
+  column :email
+end
+
+builder.column_stats
+# => {
+#   name:  { count: 3, unique: 2, nil_count: 0, sample: ["Alice", "Bob"] },
+#   email: { count: 3, unique: 1, nil_count: 1, sample: ["alice@example.com"] }
+# }
+```
+
+Statistics respect filters, limits, and offsets. The `nil_count` includes both `nil` values and values matching the configured `empty_value`.
+
 ### Headers
 
 ```ruby
@@ -420,6 +445,7 @@ builder.headers  # => ["name", "email"]
 | `Builder#append_to(path)` | Append data rows (no header, no BOM) to an existing CSV file |
 | `Builder#to_io(io)` | Stream CSV to any IO object |
 | `Builder#headers` | Return column header names |
+| `Builder#column_stats` | Per-column statistics: count, unique, nil_count, and sample values |
 | `Builder#row_count` | Number of data rows after filters, sorts, offsets, and limits |
 
 ## Development
