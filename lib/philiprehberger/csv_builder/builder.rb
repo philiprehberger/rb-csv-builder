@@ -174,6 +174,15 @@ module Philiprehberger
         filtered_records.size
       end
 
+      # Whether the builder will emit zero data rows after applying filters,
+      # sort, offset, and limit. Headers and footer are excluded from the
+      # check — `#empty?` reports on the data body only.
+      #
+      # @return [Boolean]
+      def empty?
+        row_count.zero?
+      end
+
       # Per-column statistics across filtered records.
       #
       # @return [Hash{Symbol => Hash}] column name mapped to stats hash

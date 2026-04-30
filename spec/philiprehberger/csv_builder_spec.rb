@@ -1361,4 +1361,44 @@ RSpec.describe Philiprehberger::CsvBuilder do
       expect(builder.row_count).to eq(2)
     end
   end
+
+  describe '#empty?' do
+    it 'returns true when the source records are empty' do
+      builder = described_class.build([]) do
+        column :a
+      end
+      expect(builder.empty?).to be true
+    end
+
+    it 'returns false when records exist' do
+      builder = described_class.build([{ a: 1 }]) do
+        column :a
+      end
+      expect(builder.empty?).to be false
+    end
+
+    it 'returns true when filters exclude every record' do
+      builder = described_class.build([{ n: 1 }, { n: 3 }]) do
+        column :n
+        filter { |r| r[:n].even? }
+      end
+      expect(builder.empty?).to be true
+    end
+
+    it 'returns true with limit(0)' do
+      builder = described_class.build([{ a: 1 }, { a: 2 }]) do
+        column :a
+        limit 0
+      end
+      expect(builder.empty?).to be true
+    end
+
+    it 'returns true when offset skips past the end' do
+      builder = described_class.build([{ a: 1 }, { a: 2 }]) do
+        column :a
+        offset 10
+      end
+      expect(builder.empty?).to be true
+    end
+  end
 end

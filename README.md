@@ -306,6 +306,7 @@ builder = Philiprehberger::CsvBuilder.build(records) do
 end
 
 builder.row_count  # => 50
+builder.empty?     # => false (true when no data rows would be emitted)
 ```
 
 ### Streaming
@@ -447,6 +448,7 @@ builder.headers  # => ["name", "email"]
 | `Builder#headers` | Return column header names |
 | `Builder#column_stats` | Per-column statistics: count, unique, nil_count, and sample values |
 | `Builder#row_count` | Number of data rows after filters, sorts, offsets, and limits |
+| `Builder#empty?` | `true` when zero data rows would be emitted (after filters/limits/offset) |
 
 ## Development
 
